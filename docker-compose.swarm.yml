@@ -27,11 +27,14 @@ services:
 
   openclaw:
     image: alpine/openclaw:latest
+    command: ["node", "openclaw.mjs", "gateway", "--allow-unconfigured"]
     environment:
+      - OPENCLAW_HOME=/data
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
     volumes:
       - openclaw-data:/data
       - /opt/energy-reglaments-bot/openclaw-workspace/workspace:/data/workspace
+      - /var/lib/docker/volumes/energy-reglaments-bot_openclaw-data/_data/openclaw.json:/home/node/.openclaw/openclaw.json
     networks:
       - energy-net
     deploy:
