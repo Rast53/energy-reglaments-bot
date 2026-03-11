@@ -85,6 +85,7 @@ jobs:
             chmod 600 .env
 
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u rast53 --password-stdin
+            set -a && source /opt/energy-reglaments-bot/.env && set +a
             docker stack deploy -c /opt/energy-reglaments-bot/docker-compose.swarm.yml energy-reglaments-bot --with-registry-auth
             sleep 15
             docker service ls | grep energy-reglaments-bot || echo "Stack not found yet"
