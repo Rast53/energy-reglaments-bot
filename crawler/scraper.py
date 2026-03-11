@@ -33,8 +33,16 @@ def _get(url: str, verify: bool = False) -> requests.Response:
 
 
 def _parse_date(text: str) -> date | None:
-    """Parse date from text containing DD.MM.YYYY pattern."""
-    match = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", text)
+    """Parse date from text, preferring 'Дата вступления в силу: DD.MM.YYYY'."""
+    # First try to extract date right after "вступления в силу"
+    match = re.search(
+        r"вступлени[яе]\s+в\s+силу[:\s]+(\d{2})\.(\d{2})\.(\d{4})",
+        text,
+        re.IGNORECASE,
+    )
+    if not match:
+        # Fallback: first DD.MM.YYYY in text
+        match = re.search(r"(\d{2})\.(\d{2})\.(\d{4})", text)
     if not match:
         return None
     day, month, year = int(match.group(1)), int(match.group(2)), int(match.group(3))
@@ -237,39 +245,53 @@ def fetch_versions(
 def _find_version_blocks(soup: BeautifulSoup) -> list[Tag]:
     """Find blocks that represent individual versions on the page.
 
-    Tries several strategies to locate version containers.
+    Anchors on 'Дата вступления в силу' text — each such node is a version entry.
+    Walks up to a container that also has a PDF/DOC link.
     """
-    # Strategy 1: divs or table rows with date pattern
     candidates: list[Tag] = []
+    seen: set[int] = set()
 
-    for tag in soup.find_all(["div", "tr", "li", "p"]):
-        text = tag.get_text(" ", strip=True)
-        if re.search(r"\d{2}\.\d{2}\.\d{4}", text):
-            has_links = tag.find("a", href=True) is not None
-            if has_links:
-                candidates.append(tag)
+    # Primary strategy: find "Дата вступления в силу" anchors
+    for node in soup.find_all(string=re.compile(r"Дата вступления в силу", re.IGNORECASE)):
+        # Walk up to find a container that has both a date and a file link
+        parent: Tag | None = node.find_parent(["div", "td", "li", "p", "tr"])
+        while parent is not None:
+            has_pdf = parent.find("a", href=re.compile(r"\.(pdf|doc)", re.IGNORECASE))
+            has_date = re.search(r"\d{2}\.\d{2}\.\d{4}", parent.get_text())
+            if has_pdf and has_date:
+                if id(parent) not in seen:
+                    seen.add(id(parent))
+                    candidates.append(parent)
+                break
+            parent = parent.find_parent(["div", "td", "li", "p", "tr"])
 
     if candidates:
-        return _deduplicate_blocks(candidates)
+        return candidates
 
-    # Strategy 2: any element with "вступления в силу" text
-    for tag in soup.find_all(string=re.compile(r"вступлени", re.IGNORECASE)):
-        parent = tag.find_parent(["div", "tr", "li", "td"])
-        if parent and parent not in candidates:
-            candidates.append(parent)
-
-    return _deduplicate_blocks(candidates)
+    # Fallback: look for small blocks (< 600 chars) with both a date and a file link
+    fallback: list[Tag] = []
+    for tag in soup.find_all(["div", "td", "li"]):
+        text = tag.get_text(" ", strip=True)
+        if (
+            re.search(r"\d{2}\.\d{2}\.\d{4}", text)
+            and tag.find("a", href=re.compile(r"\.(pdf|doc)", re.IGNORECASE))
+            and len(text) < 600
+            and id(tag) not in seen
+        ):
+            seen.add(id(tag))
+            fallback.append(tag)
+    return _deduplicate_blocks(fallback)
 
 
 def _deduplicate_blocks(blocks: list[Tag]) -> list[Tag]:
-    """Remove nested blocks, keeping only outermost ones."""
+    """Remove nested blocks, keeping only innermost (smallest) ones."""
     result: list[Tag] = []
     for block in blocks:
-        is_child = any(
-            block != other and block in other.descendants
+        is_parent = any(
+            block != other and other in block.descendants
             for other in blocks
         )
-        if not is_child:
+        if not is_parent:
             result.append(block)
     return result
 
