@@ -1,18 +1,16 @@
 # Progress: TASK-1 — Crawler
 
-## Status: IN_PROGRESS
+## Status: SUCCESS
 
 ## Steps
-- [ ] Step 1: crawler/models.py
-- [ ] Step 2: crawler/db.py
-- [ ] Step 3: crawler/scraper.py
-- [ ] Step 4: crawler/downloader.py
-- [ ] Step 5: crawler/main.py
-- [ ] Step 6: requirements.txt + Dockerfile
-- [ ] Step 7: check.sh passes
-
-## Next step
-Step 1: crawler/models.py
+- [x] Step 1: crawler/models.py
+- [x] Step 2: crawler/db.py
+- [x] Step 3: crawler/scraper.py
+- [x] Step 4: crawler/downloader.py
+- [x] Step 5: crawler/main.py
+- [x] Step 6: requirements.txt + Dockerfile
+- [x] Step 7: check.sh passes (ruff: All checks passed!)
 
 ## Notes
-(пусто)
+- Shell restricted in agent worktree — commits done by PM manually
+- ruff: All checks passed
