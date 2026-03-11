@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  bot:
+    image: ghcr.io/rast53/energy-reglaments-bot/bot:${IMAGE_TAG:-latest}
+    environment:
+      - BOT_TOKEN=${BOT_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENCLAW_URL=http://openclaw:18789
+      - OPENCLAW_API_KEY=${OPENCLAW_API_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - DATABASE_URL=${DATABASE_URL}
+      - ADMIN_IDS=${ADMIN_IDS}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    networks:
+      - energy-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  openclaw:
+    image: alpine/openclaw:latest
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+    volumes:
+      - openclaw-data:/data
+      - /opt/energy-reglaments-bot/openclaw-workspace/workspace:/data/workspace
+    networks:
+      - energy-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    volumes:
+      - qdrant-data:/qdrant/storage
+    networks:
+      - energy-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-energy}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-energy}
+      - POSTGRES_DB=${POSTGRES_DB:-energy}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - energy-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+  crawler:
+    image: ghcr.io/rast53/energy-reglaments-bot/crawler:${IMAGE_TAG:-latest}
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - CRAWLER_VERIFY_SSL=false
+      - CRAWLER_BASE_URL=https://www.np-sr.ru
+      - CRAWLER_DELAY_SEC=2
+      - EMBEDDING_MODEL=openai/text-embedding-3-large
+      - QDRANT_COLLECTION=reglaments
+      - QDRANT_VECTOR_SIZE=3072
+    volumes:
+      - files-data:/app/files
+    networks:
+      - energy-net
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+
+networks:
+  energy-net:
+    driver: overlay
+
+volumes:
+  openclaw-data:
+  qdrant-data:
+  postgres-data:
+  files-data:

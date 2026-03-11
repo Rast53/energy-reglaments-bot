@@ -1,0 +1,17 @@
+.env
+*.key
+credentials/
+__pycache__/
+*.pyc
+*.pyo
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+dist/
+build/
+*.egg-info/
+.venv/
+venv/
+files/
+*.pdf
+*.docx

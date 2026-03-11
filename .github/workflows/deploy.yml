@@ -1,0 +1,82 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+env:
+  REGISTRY: ghcr.io
+  BOT_IMAGE: ghcr.io/rast53/energy-reglaments-bot/bot
+  CRAWLER_IMAGE: ghcr.io/rast53/energy-reglaments-bot/crawler
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push bot
+        uses: docker/build-push-action@v5
+        with:
+          context: ./bot
+          push: true
+          tags: ${{ env.BOT_IMAGE }}:${{ github.sha }},${{ env.BOT_IMAGE }}:latest
+
+      - name: Build & push crawler
+        uses: docker/build-push-action@v5
+        with:
+          context: ./crawler
+          push: true
+          tags: ${{ env.CRAWLER_IMAGE }}:${{ github.sha }},${{ env.CRAWLER_IMAGE }}:latest
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to VPS-2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS2_HOST }}
+          username: ${{ secrets.VPS2_USER }}
+          key: ${{ secrets.VPS2_SSH_KEY }}
+          envs: BOT_TOKEN,OPENROUTER_API_KEY,OPENCLAW_API_KEY,DATABASE_URL,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,ADMIN_IDS,IMAGE_TAG
+          script: |
+            set -e
+            cd /opt/energy-reglaments-bot
+
+            # Write .env
+            cat > .env << ENVEOF
+            BOT_TOKEN=${BOT_TOKEN}
+            OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+            OPENCLAW_API_KEY=${OPENCLAW_API_KEY}
+            DATABASE_URL=${DATABASE_URL}
+            POSTGRES_USER=${POSTGRES_USER}
+            POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+            POSTGRES_DB=${POSTGRES_DB}
+            ADMIN_IDS=${ADMIN_IDS}
+            IMAGE_TAG=${IMAGE_TAG}
+            ENVEOF
+
+            echo ${{ secrets.GHCR_TOKEN }} | docker login ghcr.io -u rast53 --password-stdin
+            docker stack deploy -c docker-compose.swarm.yml energy-reglaments-bot --with-registry-auth
+            sleep 10
+            docker service ls | grep energy-reglaments-bot
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENCLAW_API_KEY: ${{ secrets.OPENCLAW_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+          IMAGE_TAG: ${{ github.sha }}

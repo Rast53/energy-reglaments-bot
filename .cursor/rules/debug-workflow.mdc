@@ -1,0 +1,27 @@
+---
+description: Debug workflow for common issues
+alwaysApply: true
+---
+
+# Debug Workflow
+
+## Crawler issues
+- SSL error → check `verify=False` in requests call
+- 403/blocked → check User-Agent header ("Mozilla/5.0 Windows...")
+- PDF not downloaded → check SHA256 already exists in DB (idempotent)
+- DB error → check DATABASE_URL and postgres service health
+
+## Indexer issues
+- Qdrant connection → check QDRANT_URL, `curl $QDRANT_URL/healthz`
+- Embedding error → check OPENROUTER_API_KEY, model name `openai/text-embedding-3-large`
+- Empty chunks → check PDF parsing with `python3 -c "import pymupdf4llm; print(pymupdf4llm.to_markdown('file.pdf')[:500])"`
+
+## Bot issues
+- OpenClaw 401 → check OPENCLAW_API_KEY matches sidecar config
+- Empty search results → check Qdrant collection exists and has data
+- JSON parse error from LLM → check system prompt forces JSON output
+
+## Full debug flow
+1. `./scripts/health.sh` — check all services running
+2. `./scripts/logs.sh [service] 100` — check recent logs
+3. Check specific component interactively

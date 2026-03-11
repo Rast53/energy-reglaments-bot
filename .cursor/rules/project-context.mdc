@@ -1,0 +1,25 @@
+---
+description: Project context for energy-reglaments-bot
+alwaysApply: true
+---
+
+# Project Context
+
+Stack: Python 3.12, aiogram 3, Qdrant, PostgreSQL, OpenClaw sidecar, Docker Swarm
+
+## Key rules
+- All secrets from environment variables only
+- All DB access through parameterized queries (no f-strings in SQL)
+- Bot handlers must be fully async (asyncpg, aiohttp, qdrant-client async)
+- Crawler is the only component that writes to PostgreSQL
+- Qdrant chunks are immutable after indexing — never update, only add new version chunks
+- Status logic (current/future/archive) lives in crawler only
+
+## Commands
+- Check: `./scripts/check.sh`
+- Crawler: `./scripts/run-crawler.sh`
+- Indexer: `./scripts/run-indexer.sh`
+- Deploy: `./scripts/deploy.sh`
+
+## Architecture
+See .openclaw/ARCHITECTURE.md for full system diagram and component descriptions.
