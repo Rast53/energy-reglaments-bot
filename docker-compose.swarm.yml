@@ -65,6 +65,26 @@ services:
       restart_policy:
         condition: on-failure
 
+  indexer:
+    image: ghcr.io/rast53/energy-reglaments-bot/indexer:${IMAGE_TAG:-latest}
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - QDRANT_URL=http://qdrant:6333
+      - QDRANT_COLLECTION=reglaments
+      - QDRANT_VECTOR_SIZE=3072
+      - EMBEDDING_MODEL=openai/text-embedding-3-large
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    volumes:
+      - files-data:/app/files
+    networks:
+      - energy-net
+    deploy:
+      replicas: 0  # запускается вручную после crawler
+      restart_policy:
+        condition: on-failure
+        max_attempts: 1
+
   crawler:
     image: ghcr.io/rast53/energy-reglaments-bot/crawler:${IMAGE_TAG:-latest}
     environment:
