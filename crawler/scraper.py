@@ -74,7 +74,7 @@ def fetch_doc_list(base_url: str, delay_sec: float = DEFAULT_DELAY_SEC) -> list[
     soup = BeautifulSoup(resp.content, "html.parser")
     documents: list[Document] = []
 
-    links = soup.find_all("a", href=re.compile(r"/reglaments/\w+/\d+"))
+    links = soup.find_all("a", href=re.compile(r"/reglaments/(?:\w+/)?(\d+)$"))
     seen_urls: set[str] = set()
 
     for link in links:

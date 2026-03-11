@@ -83,11 +83,10 @@ services:
     networks:
       - energy-net
     deploy:
-      replicas: 0  # запускается вручную или через cron
+      replicas: 0  # запускается вручную: docker service scale energy-reglaments-bot_crawler=1
       restart_policy:
-        condition: none
-      labels:
-        - "cron=0 2 * * *"
+        condition: on-failure
+        max_attempts: 1  # не перезапускать при exit(0) или exit(1)
 
 networks:
   energy-net:
