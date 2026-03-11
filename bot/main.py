@@ -6,6 +6,7 @@ import os
 import sys
 
 from aiogram import Bot, Dispatcher
+from aiohttp import web
 from qdrant_client import AsyncQdrantClient
 
 from bot.handlers import question, start, versions
@@ -16,6 +17,20 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger(__name__)
+
+
+async def health_handler(request: web.Request) -> web.Response:
+    return web.Response(text="ok")
+
+
+async def run_health_server() -> None:
+    app = web.Application()
+    app.router.add_get("/health", health_handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    await site.start()
+    logger.info("Health server started on :8080")
 
 
 async def main() -> None:
@@ -32,6 +47,8 @@ async def main() -> None:
     dp.include_router(start.router)
     dp.include_router(versions.router)
     dp.include_router(question.router)
+
+    await run_health_server()
 
     logger.info("Bot starting polling...")
     try:
