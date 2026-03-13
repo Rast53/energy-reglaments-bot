@@ -8,6 +8,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions"
+
 SYSTEM_PROMPT_TEMPLATE = """\
 Ты эксперт по регламентам ОРЭМ (Оптовый рынок электроэнергии и мощности).
 Отвечай ТОЛЬКО на основе предоставленных выдержек. Не придумывай информацию.
@@ -35,17 +37,17 @@ DEFAULT_RESULT: dict[str, Any] = {
 }
 
 
-async def ask_openclaw(
+async def ask_llm(
     question: str,
     formatted_context: str,
-    url: str,
     api_key: str,
+    model: str = "google/gemini-2.0-flash-001",
 ) -> dict[str, Any]:
-    """Send question with context to OpenClaw and parse JSON response."""
+    """Send question with context to OpenRouter and parse JSON response."""
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(context=formatted_context)
 
     payload = {
-        "model": "gemini",
+        "model": model,
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": question},
@@ -61,7 +63,7 @@ async def ask_openclaw(
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{url}/v1/chat/completions",
+                OPENROUTER_CHAT_URL,
                 json=payload,
                 headers=headers,
             )
@@ -72,17 +74,19 @@ async def ask_openclaw(
         return _parse_response(content)
 
     except httpx.HTTPStatusError as exc:
-        logger.error("OpenClaw HTTP error: %s %s", exc.response.status_code, exc.response.text)
+        logger.error("OpenRouter HTTP error: %s %s", exc.response.status_code, exc.response.text)
         return {**DEFAULT_RESULT, "answer": "Ошибка при обращении к LLM. Попробуйте позже."}
 
     except Exception:
-        logger.exception("OpenClaw request failed")
+        logger.exception("OpenRouter request failed")
         return {**DEFAULT_RESULT, "answer": "Ошибка при обращении к LLM. Попробуйте позже."}
 
 
 def _parse_response(content: str) -> dict[str, Any]:
-    """Parse JSON from LLM response, with fallback for non-JSON output."""
+    """Parse JSON from LLM response with robust fallbacks."""
     cleaned = content.strip()
+
+    # Strip markdown code block wrapper (```json ... ```)
     if cleaned.startswith("```"):
         lines = cleaned.split("\n")
         lines = lines[1:]
@@ -90,12 +94,30 @@ def _parse_response(content: str) -> dict[str, Any]:
             lines = lines[:-1]
         cleaned = "\n".join(lines).strip()
 
+    # Try direct parse first
     try:
         result = json.loads(cleaned)
-        for key, default_val in DEFAULT_RESULT.items():
-            if key not in result:
-                result[key] = default_val
-        return result
+        return _ensure_keys(result)
     except json.JSONDecodeError:
-        logger.warning("Failed to parse JSON from OpenClaw, using raw text as answer")
-        return {**DEFAULT_RESULT, "answer": content.strip(), "confidence": "low"}
+        pass
+
+    # Fallback: find JSON object boundaries
+    start = cleaned.find("{")
+    end = cleaned.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        try:
+            result = json.loads(cleaned[start : end + 1])
+            return _ensure_keys(result)
+        except json.JSONDecodeError:
+            pass
+
+    logger.warning("Failed to parse JSON from LLM, using raw text as answer")
+    return {**DEFAULT_RESULT, "answer": content.strip(), "confidence": "low"}
+
+
+def _ensure_keys(result: dict[str, Any]) -> dict[str, Any]:
+    """Ensure all required keys exist in the result dict."""
+    for key, default_val in DEFAULT_RESULT.items():
+        if key not in result:
+            result[key] = default_val
+    return result

@@ -3,38 +3,32 @@ from __future__ import annotations
 import logging
 import time
 
-from openai import OpenAI
+import httpx
 
 from indexer.models import Chunk
 
 logger = logging.getLogger(__name__)
 
-BATCH_SIZE = 20
+BATCH_SIZE = 5
 RETRY_ATTEMPTS = 3
 RETRY_DELAY_SEC = 5
 
-
-def _create_client(api_key: str) -> OpenAI:
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+OPENROUTER_EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 
 
 def embed_chunks(
     chunks: list[Chunk],
     api_key: str,
-    model: str = "openai/text-embedding-3-large",
+    model: str = "intfloat/multilingual-e5-large",
 ) -> list[list[float]]:
     """Embed chunk texts in batches via OpenRouter. Returns vectors in input order."""
-    client = _create_client(api_key)
     all_vectors: list[list[float]] = []
 
     for i in range(0, len(chunks), BATCH_SIZE):
         batch = chunks[i : i + BATCH_SIZE]
         texts = [c.text for c in batch]
 
-        vectors = _embed_with_retry(client, model, texts, batch_num=i // BATCH_SIZE + 1)
+        vectors = _embed_with_retry(api_key, model, texts, batch_num=i // BATCH_SIZE + 1)
         all_vectors.extend(vectors)
 
     logger.info("Embedded %d chunks total", len(all_vectors))
@@ -42,7 +36,7 @@ def embed_chunks(
 
 
 def _embed_with_retry(
-    client: OpenAI,
+    api_key: str,
     model: str,
     texts: list[str],
     batch_num: int,
@@ -50,9 +44,19 @@ def _embed_with_retry(
     """Call embeddings API with retries on failure."""
     for attempt in range(1, RETRY_ATTEMPTS + 1):
         try:
-            response = client.embeddings.create(model=model, input=texts)
-            sorted_data = sorted(response.data, key=lambda d: d.index)
-            vectors = [d.embedding for d in sorted_data]
+            resp = httpx.post(
+                OPENROUTER_EMBEDDINGS_URL,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={"model": model, "input": texts},
+                timeout=60.0,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            sorted_items = sorted(data["data"], key=lambda d: d["index"])
+            vectors = [d["embedding"] for d in sorted_items]
             logger.info(
                 "Batch %d: embedded %d texts (attempt %d)",
                 batch_num, len(texts), attempt,

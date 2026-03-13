@@ -1,4 +1,4 @@
 pymupdf4llm>=0.0.17
-openai>=1.0
+httpx>=0.25.0
 qdrant-client>=1.7.0
 psycopg2-binary>=2.9.9

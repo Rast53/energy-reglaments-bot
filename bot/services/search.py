@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from openai import AsyncOpenAI
+import httpx
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     FieldCondition,
@@ -14,25 +14,29 @@ from qdrant_client.models import (
 
 logger = logging.getLogger(__name__)
 
-
-def _create_openai_client(api_key: str) -> AsyncOpenAI:
-    return AsyncOpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+OPENROUTER_EMBEDDINGS_URL = "https://openrouter.ai/api/v1/embeddings"
 
 
 async def embed_text(
     text: str,
     api_key: str,
-    model: str = "openai/text-embedding-3-large",
+    model: str = "intfloat/multilingual-e5-large",
 ) -> list[float]:
-    """Embed a single text via OpenRouter embeddings API."""
-    client = _create_openai_client(api_key)
-    response = await client.embeddings.create(model=model, input=[text])
-    vector: list[float] = response.data[0].embedding
-    logger.debug("Embedded query text, dim=%d", len(vector))
-    return vector
+    """Embed a single text via OpenRouter embeddings API (httpx, no openai SDK)."""
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        resp = await client.post(
+            OPENROUTER_EMBEDDINGS_URL,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={"model": model, "input": [text]},
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        vector: list[float] = data["data"][0]["embedding"]
+        logger.debug("Embedded query text, dim=%d", len(vector))
+        return vector
 
 
 def _build_filter(mode: str) -> Filter | None:

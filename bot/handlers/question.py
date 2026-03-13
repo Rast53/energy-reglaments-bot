@@ -7,7 +7,7 @@ from aiogram import F, Router
 from aiogram.types import Message
 from qdrant_client import AsyncQdrantClient
 
-from bot.services.openclaw import ask_openclaw
+from bot.services.openclaw import ask_llm
 from bot.services.search import embed_text, search_qdrant
 from bot.services.validator import detect_mode, validate_sources
 from bot.utils.formatting import format_answer, format_chunks_for_prompt
@@ -27,12 +27,12 @@ async def handle_question(message: Message, qdrant: AsyncQdrantClient) -> None:
 
     try:
         mode = detect_mode(text)
-        logger.info("Question from user=%s, mode=%s", message.from_user.id, mode)
+        username = message.from_user.username or str(message.from_user.id)
+        logger.info("Question from user=%s username=%s mode=%s", message.from_user.id, username, mode)
 
         api_key = os.environ["OPENROUTER_API_KEY"]
-        embedding_model = os.environ.get("EMBEDDING_MODEL", "openai/text-embedding-3-large")
-        openclaw_url = os.environ.get("OPENCLAW_URL", "http://openclaw:18789")
-        openclaw_api_key = os.environ["OPENCLAW_API_KEY"]
+        embedding_model = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
+        llm_model = os.environ.get("LLM_MODEL", "google/gemini-2.0-flash-001")
         collection = os.environ.get("QDRANT_COLLECTION", "reglaments")
 
         vector = await embed_text(text, api_key=api_key, model=embedding_model)
@@ -54,11 +54,11 @@ async def handle_question(message: Message, qdrant: AsyncQdrantClient) -> None:
 
         formatted_context = format_chunks_for_prompt(chunks)
 
-        result = await ask_openclaw(
+        result = await ask_llm(
             question=text,
             formatted_context=formatted_context,
-            url=openclaw_url,
-            api_key=openclaw_api_key,
+            api_key=api_key,
+            model=llm_model,
         )
 
         sources_valid = validate_sources(result.get("sources", []), chunks)
@@ -70,7 +70,8 @@ async def handle_question(message: Message, qdrant: AsyncQdrantClient) -> None:
         await message.answer(answer_text, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception:
-        logger.exception("Error processing question from user=%s", message.from_user.id)
+        username = message.from_user.username or str(message.from_user.id)
+        logger.exception("Error processing question from user=%s username=%s", message.from_user.id, username)
         await message.answer(
             "❌ Произошла ошибка при обработке вопроса. Попробуйте позже.",
             parse_mode="HTML",

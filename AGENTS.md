@@ -6,10 +6,10 @@ Answers questions based on actual document versions with RAG + OpenClaw.
 ## Tech Stack
 - **Bot:** Python 3.12, aiogram 3
 - **Crawler:** Python 3.12, requests, BeautifulSoup4
-- **Indexer:** Python 3.12, pymupdf4llm, openai client (embeddings via OpenRouter)
-- **Vector DB:** Qdrant (text-embedding-3-large, 3072 dims)
+- **Indexer:** Python 3.12, pymupdf4llm, httpx (embeddings via OpenRouter)
+- **Vector DB:** Qdrant (intfloat/multilingual-e5-large, 1024 dims)
 - **Metadata DB:** PostgreSQL 16
-- **LLM Agent:** OpenClaw sidecar (OpenRouter → Gemini Flash)
+- **LLM:** OpenRouter direct (google/gemini-2.0-flash-001)
 - **Deploy:** Docker Swarm, VPS-2 (5.35.88.34)
 - **CI/CD:** GitHub Actions → GHCR → VPS-2
 
