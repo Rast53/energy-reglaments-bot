@@ -108,6 +108,17 @@ def _split_large_section(
     return sub_chunks
 
 
+_JUNK_TITLES = {"подробнее", "скачать", "загрузить", "ссылка", ""}
+
+
+def _clean_doc_title(raw_title: str, doc_id: str) -> str:
+    """Return a meaningful title, falling back to doc_id for junk values."""
+    stripped = raw_title.strip()
+    if stripped.lower() in _JUNK_TITLES or len(stripped) < 3:
+        return doc_id
+    return stripped
+
+
 def pdf_to_chunks(file_path: str, version_meta: dict) -> list[Chunk]:
     """Parse a PDF file into a list of Chunk objects."""
     logger.info("Parsing PDF: %s", file_path)
@@ -124,13 +135,14 @@ def pdf_to_chunks(file_path: str, version_meta: dict) -> list[Chunk]:
 
     doc_id = version_meta["doc_id"]
     version_date = str(version_meta["valid_from"])
-    is_changes = "изменени" in version_meta.get("doc_title", "").lower()
+    doc_title = _clean_doc_title(version_meta.get("doc_title", ""), doc_id)
+    is_changes = "изменени" in doc_title.lower()
 
     chunks: list[Chunk] = []
     for idx, (section_num, section_title, text) in enumerate(all_sub_chunks):
         chunk = Chunk(
             doc_id=doc_id,
-            doc_title=version_meta.get("doc_title", ""),
+            doc_title=doc_title,
             appendix_num=version_meta.get("appendix_num"),
             version_id=version_date,
             valid_from=version_date,
