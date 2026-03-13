@@ -27,7 +27,8 @@ async def handle_question(message: Message, qdrant: AsyncQdrantClient) -> None:
 
     try:
         mode = detect_mode(text)
-        logger.info("Question from user=%s, mode=%s", message.from_user.id, mode)
+        username = message.from_user.username or str(message.from_user.id)
+        logger.info("Question from user=%s username=%s mode=%s", message.from_user.id, username, mode)
 
         api_key = os.environ["OPENROUTER_API_KEY"]
         embedding_model = os.environ.get("EMBEDDING_MODEL", "intfloat/multilingual-e5-large")
@@ -69,7 +70,8 @@ async def handle_question(message: Message, qdrant: AsyncQdrantClient) -> None:
         await message.answer(answer_text, parse_mode="HTML", disable_web_page_preview=True)
 
     except Exception:
-        logger.exception("Error processing question from user=%s", message.from_user.id)
+        username = message.from_user.username or str(message.from_user.id)
+        logger.exception("Error processing question from user=%s username=%s", message.from_user.id, username)
         await message.answer(
             "❌ Произошла ошибка при обработке вопроса. Попробуйте позже.",
             parse_mode="HTML",
