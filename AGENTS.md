@@ -10,14 +10,14 @@ Answers questions based on actual document versions with RAG + OpenClaw.
 - **Vector DB:** Qdrant (intfloat/multilingual-e5-large, 1024 dims)
 - **Metadata DB:** PostgreSQL 16
 - **LLM:** OpenRouter direct (google/gemini-2.0-flash-001)
-- **Deploy:** Docker Swarm, VPS-2 (5.35.88.34)
-- **CI/CD:** GitHub Actions → GHCR → VPS-2
+- **Deploy:** Docker Compose, vps-tw-server (83.217.220.3)
+- **CI/CD:** GitHub Actions → GHCR → vps-tw-server
 
 ## Commands
 - `./scripts/check.sh` — lint + typecheck (ruff + mypy)
 - `./scripts/run-crawler.sh` — run crawler once (scrape + download)
 - `./scripts/run-indexer.sh` — run indexer once (PDF → Qdrant)
-- `./scripts/deploy.sh` — deploy stack to VPS-2 + health check
+- `./scripts/deploy.sh` — deploy via SSH to vps-tw-server + health check
 - `./scripts/logs.sh [service]` — show service logs
 - `./scripts/health.sh` — check all services
 
