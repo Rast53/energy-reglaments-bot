@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Project Context
 
-Stack: Python 3.12, aiogram 3, Qdrant, PostgreSQL, OpenClaw sidecar, Docker Swarm
+Stack: Python 3.12, aiogram 3, Qdrant, PostgreSQL, OpenClaw sidecar, Docker Compose on vps-tw-server 83.217.220.3
 
 ## Key rules
 - All secrets from environment variables only
@@ -19,7 +19,7 @@ Stack: Python 3.12, aiogram 3, Qdrant, PostgreSQL, OpenClaw sidecar, Docker Swar
 - Check: `./scripts/check.sh`
 - Crawler: `./scripts/run-crawler.sh`
 - Indexer: `./scripts/run-indexer.sh`
-- Deploy: `./scripts/deploy.sh`
+- Deploy: `./scripts/deploy.sh` — SSH to vps-tw-server, docker compose up -d
 
 ## Architecture
 See .openclaw/ARCHITECTURE.md for full system diagram and component descriptions.

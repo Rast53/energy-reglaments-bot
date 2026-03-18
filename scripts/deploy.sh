@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
-STACK="energy-reglaments-bot"
-echo "=== Deploying $STACK ==="
+VPS_HOST="root@83.217.220.3"
+PROJECT_DIR="/opt/energy-reglaments-bot"
+echo "=== Deploying to $VPS_HOST ==="
 
 if [ ! -f .env ]; then
   echo "ERROR: .env not found"
@@ -10,17 +11,16 @@ if [ ! -f .env ]; then
   exit 1
 fi
 
-source .env
-
-echo "--- Deploying stack ---"
-docker stack deploy -c docker-compose.swarm.yml $STACK --with-registry-auth
+echo "--- Deploying via docker compose ---"
+ssh "$VPS_HOST" "cd $PROJECT_DIR && docker compose pull && docker compose up -d"
 
 echo "--- Waiting for services ---"
 sleep 10
 
 echo "--- Health check ---"
-./scripts/health.sh
+ssh "$VPS_HOST" "cd $PROJECT_DIR && docker compose ps"
 
 echo "--- Recent logs ---"
-./scripts/logs.sh bot 30
+ssh "$VPS_HOST" "cd $PROJECT_DIR && docker compose logs bot --tail 30"
+
 echo "=== DEPLOY DONE ==="
