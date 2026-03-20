@@ -64,7 +64,7 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          envs: BOT_TOKEN,OPENROUTER_API_KEY,OPENCLAW_API_KEY,DATABASE_URL,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,ADMIN_IDS
+          envs: BOT_TOKEN,OPENROUTER_API_KEY,OPENCLAW_API_KEY,DATABASE_URL,POSTGRES_USER,POSTGRES_PASSWORD,POSTGRES_DB,ADMIN_IDS,HTTPS_PROXY
           script: |
             set -e
             cd /opt/energy-reglaments-bot
@@ -78,6 +78,7 @@ jobs:
             POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
             POSTGRES_DB=${POSTGRES_DB}
             ADMIN_IDS=${ADMIN_IDS}
+            HTTPS_PROXY=${HTTPS_PROXY}
             ENVEOF
             chmod 600 .env
 
@@ -95,4 +96,5 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
           ADMIN_IDS: ${{ secrets.ADMIN_IDS }}
+          HTTPS_PROXY: ${{ secrets.HTTPS_PROXY }}
 
