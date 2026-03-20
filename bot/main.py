@@ -6,6 +6,7 @@ import os
 import sys
 
 from aiogram import Bot, Dispatcher
+from aiogram.client.session.aiohttp import AiohttpSession
 from aiohttp import web
 from qdrant_client import AsyncQdrantClient
 
@@ -40,7 +41,12 @@ async def main() -> None:
     qdrant = AsyncQdrantClient(url=qdrant_url)
     logger.info("Qdrant client initialized: %s", qdrant_url)
 
-    bot = Bot(token=bot_token)
+    proxy_url = os.environ.get("HTTPS_PROXY") or os.environ.get("HTTP_PROXY")
+    if proxy_url:
+        logger.info("Using proxy: %s", proxy_url.split("@")[-1])
+        bot = Bot(token=bot_token, session=AiohttpSession(proxy=proxy_url))
+    else:
+        bot = Bot(token=bot_token)
     dp = Dispatcher()
     dp["qdrant"] = qdrant
 
